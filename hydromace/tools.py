@@ -8,6 +8,8 @@ def assign_num_hydrogens(atoms: Atoms) -> np.ndarray:
     postions = atoms.get_positions()
     atomic_numbers = atoms.get_atomic_numbers()
     is_hydrogen = atomic_numbers == 1
+    if np.sum(is_hydrogen) == 0:
+        return np.zeros(len(atoms), dtype=int)
     hydrogen_positions = postions[is_hydrogen]
     heavy_atom_positions = postions[~is_hydrogen]
     distances = np.linalg.norm(
