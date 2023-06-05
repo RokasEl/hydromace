@@ -12,6 +12,8 @@ def main(data_path: str, save_path: str, valid_fraction: float = 0.1, seed: int 
     all_configs: List[ase.Atoms] = aio.read(data_path, index=":", format="extxyz")  # type: ignore
     prepared_configs = []
     for config in all_configs:
+        if all(config.get_atomic_numbers() == 1):
+            continue
         num_hydrogens = assign_num_hydrogens(config)
         config = remove_elements(config, [1])
         config.arrays["num_hydrogens"] = num_hydrogens
