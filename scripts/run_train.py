@@ -71,9 +71,11 @@ def main():
     lr_scheduler = LRScheduler(optimizer, args)
     use_wandb = setup_wandb(args)
     metrics_logger = MetricsLogger(directory=args.results_dir, tag=tag + "_train")
+    rng = np.random.default_rng(args.seed)
     for epoch in range(args.max_num_epochs):
         for batch in train_loader:
-            batch = add_noise_to_positions(batch, 0.15)
+            noise_level = rng.lognormal(mean=-1.4, sigma=0.5)
+            batch = add_noise_to_positions(batch, noise_level)
             take_step(model, batch, optimizer, lr_scheduler, args)
         if epoch % args.eval_interval == 0:
             total_loss, per_atom_loss = calculate_validation_loss(
