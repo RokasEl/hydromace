@@ -36,7 +36,6 @@ def main():
         logging.info(f"MACE version: {mace.__version__}")
     except AttributeError:
         logging.info("Cannot find MACE version, please install MACE via pip")
-    args.device = init_device(args.device)
     set_default_dtype(args.default_dtype)
     # Load data
     train_valid_data = aio.read(args.train_file, index=":", format="extxyz")
