@@ -71,10 +71,14 @@ def main():
     lr_scheduler = LRScheduler(optimizer, args)
     use_wandb = setup_wandb(args)
     metrics_logger = MetricsLogger(directory=args.results_dir, tag=tag + "_train")
-    rng = np.random.default_rng(args.seed)
+    rng = torch.Generator(device=args.device)
+    rng.manual_seed(args.seed)
     for epoch in range(args.max_num_epochs):
         for batch in train_loader:
-            noise_level = rng.uniform(low=0.,high=0.5)
+            noise_level = (
+                torch.rand(batch.positions.shape[0], generator=rng, device=args.device)
+                * 0.5
+            )
             batch = add_noise_to_positions(batch, noise_level)
             take_step(model, batch, optimizer, lr_scheduler, args)
         if epoch % args.eval_interval == 0:

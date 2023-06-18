@@ -1,7 +1,7 @@
 import torch
 
 
-def add_noise_to_positions(batch, std=0.1):
+def add_noise_to_positions(batch, std: float | torch.Tensor = 0.1):
     batch.positions += torch.randn_like(batch.positions) * std
     return batch
 
