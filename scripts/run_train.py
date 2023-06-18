@@ -74,7 +74,7 @@ def main():
     rng = np.random.default_rng(args.seed)
     for epoch in range(args.max_num_epochs):
         for batch in train_loader:
-            noise_level = rng.lognormal(mean=-1.4, sigma=0.5)
+            noise_level = rng.uniform(low=0.,high=0.5)
             batch = add_noise_to_positions(batch, noise_level)
             take_step(model, batch, optimizer, lr_scheduler, args)
         if epoch % args.eval_interval == 0:
