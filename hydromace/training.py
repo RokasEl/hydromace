@@ -6,15 +6,14 @@ def add_noise_to_positions(batch, std: float | torch.Tensor = 0.1):
     return batch
 
 
-def take_step(model, batch, optimizer, lr_scheduler, args):
+def take_step(model, batch, optimizer, args):
     batch = batch.to(args.device)
     optimizer.zero_grad()
     outputs = model(batch)
     loss = loss_function(outputs, batch, args)
     loss.backward()
     optimizer.step()
-    lr_scheduler.step(loss.item())
-    return
+    return loss.item()
 
 
 def loss_function(outputs, batch, args):

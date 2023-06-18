@@ -14,7 +14,6 @@ from mace.tools import (
     set_seeds,
     setup_logger,
 )
-from mace.tools.scripts_utils import LRScheduler
 
 import wandb
 from hydromace.training import (
@@ -67,25 +66,28 @@ def main():
         weight_decay=args.weight_decay,
         amsgrad=args.amsgrad,
     )
-    lr_scheduler = LRScheduler(optimizer, args)
+    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, args.lr_scheduler_gamma, verbose=True)
     use_wandb = setup_wandb(args)
     metrics_logger = MetricsLogger(directory=args.results_dir, tag=tag + "_train")
-    rng = torch.Generator(device=args.device)
+    rng = torch.Generator(device="cpu")
     rng.manual_seed(args.seed)
     for epoch in range(args.max_num_epochs):
         for batch in train_loader:
             noise_level = (
-                torch.rand(batch.positions.shape[0], generator=rng, device=args.device)
+                torch.rand((batch.positions.shape[0],1), generator=rng)
                 * 0.5
             )
             batch = add_noise_to_positions(batch, noise_level)
-            take_step(model, batch, optimizer, lr_scheduler, args)
+            loss = take_step(model, batch, optimizer, args)
+            wandb.log({"loss": loss})
+        lr_scheduler.step()
         if epoch % args.eval_interval == 0:
             total_loss, per_atom_loss = calculate_validation_loss(
                 model, val_loader, args
             )
             dump = {
                 "epoch": epoch,
+                "lr": lr_scheduler.get_last_lr()[0],
                 "total_loss": total_loss,
                 "per_atom_loss": per_atom_loss,
             }
