@@ -3,6 +3,7 @@ from typing import Dict, Optional
 import torch
 from e3nn.util.jit import compile_mode
 from mace.modules.models import ScaleShiftMACE
+from mace.modules.utils import get_edge_vectors_and_lengths
 
 
 @compile_mode("script")
