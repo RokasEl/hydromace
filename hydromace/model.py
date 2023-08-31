@@ -16,7 +16,14 @@ class HydroMACE(ScaleShiftMACE):
         data["positions"].requires_grad_(True)
 
         # Embeddings
-        node_feats, edge_attrs, edge_feats = self._get_initial_embeddings(data)
+        node_feats = self.node_embedding(data["node_attrs"])
+        vectors, lengths = get_edge_vectors_and_lengths(
+            positions=data["positions"],
+            edge_index=data["edge_index"],
+            shifts=data["shifts"],
+        )
+        edge_attrs = self.spherical_harmonics(vectors)
+        edge_feats = self.radial_embedding(lengths)
 
         # Interactions
         layer_contributions = []
