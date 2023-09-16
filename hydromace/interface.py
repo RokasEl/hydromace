@@ -9,6 +9,7 @@ from mace.data.utils import config_from_atoms
 from mace.tools import AtomicNumberTable
 
 from .model import HydroMACE
+from .tools import get_model_dtype
 
 
 # From moldiff package.
@@ -49,6 +50,7 @@ class HydroMaceCalculator:
         self.device = device
         self.model.to(self.device)
         self.model.eval()
+        self.dtype = get_model_dtype(model)
         self.z_table = AtomicNumberTable([int(z) for z in model.atomic_numbers])  # type: ignore
         self.cutoff = model.r_max.item()  # type: ignore
         self.batch_atoms = partial(
@@ -57,6 +59,8 @@ class HydroMaceCalculator:
 
     def predict_missing_hydrogens(self, atoms: ase.Atoms) -> np.ndarray:
         batched = self.batch_atoms(atoms)
+        keys = filter(lambda x: torch.is_floating_point(batched[x]), batched.keys)  # type: ignore
+        batched = batched.to(self.dtype, *keys)
         with torch.no_grad():
             outputs = self.model(batched)
         num_hydrogens = outputs["missing_hydrogens"].cpu().numpy()

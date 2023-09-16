@@ -1,6 +1,7 @@
 from typing import List
 
 import numpy as np
+import torch
 from ase import Atoms
 
 
@@ -33,3 +34,15 @@ def remove_elements(atoms: Atoms, atomic_numbers_to_remove: List[int]) -> Atoms:
         to_remove = atoms_copy.get_atomic_numbers() == atomic_number
         del atoms_copy[to_remove]
     return atoms_copy
+
+
+def get_model_dtype(model: torch.nn.Module) -> torch.dtype:
+    dtypes = set()
+    for p in model.parameters():
+        dtypes.add(p.dtype)
+    if torch.float32 in dtypes:
+        return torch.float32
+    elif torch.float64 in dtypes:
+        return torch.float64
+    else:
+        raise ValueError("Model neither float32 or float64")
