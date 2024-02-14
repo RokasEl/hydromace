@@ -11,6 +11,9 @@ license = { file = "LICENSE" }
 authors = [
     {name = "Rokas Elijošius", email = "re344@cam.ac.uk"}
 ]
+dependencies = [
+    "mace-torch>=0.3.3"
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
