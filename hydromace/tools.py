@@ -43,12 +43,22 @@ def _energies_to_real(energies: np.ndarray) -> np.ndarray:
     return energies_real
 
 
-def write_vibration_information_to_atoms(atoms: Atoms, vibrations: Vibrations) -> None:
+def write_vibration_information_to_atoms(
+    atoms: Atoms, vibrations: Vibrations, non_h_only: bool
+) -> None:
     """
-    Write the vibration information to the atoms object
+    Write the vibration information to the atoms object.
+    If non_h_only is True, only the non-hydrogen atoms will have the vibration information.
+    To be able to write into the `atoms.arrays` we need to pad the mode array with zeros,
+    so it has the same length as the atoms object.
     """
     vibration_data = vibrations.get_vibrations()
     energies, modes = vibration_data.get_energies_and_modes()
+
+    if non_h_only:
+        num_hs = sum(atoms.get_atomic_numbers() == 1)
+        pad = np.zeros((modes.shape[0], num_hs, 3))
+        modes = np.concatenate((modes, pad), axis=1)
     energies = _energies_to_real(energies)
     atoms.info["vibration_energy"] = energies
     for i in range(modes.shape[0]):
