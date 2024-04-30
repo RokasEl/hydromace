@@ -23,6 +23,7 @@ def main(
     start = perf_counter()
     print(f"Starting normal mode calculations for indices {index} in {data_path}")
     for i, atoms in enumerate(data):
+        atoms = atoms.copy()
         atoms.calc = calc
         vibrations = Vibrations(atoms)
         vibrations.run()
