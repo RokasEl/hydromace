@@ -66,20 +66,20 @@ def main():
         weight_decay=args.weight_decay,
         amsgrad=args.amsgrad,
     )
-    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, args.lr_scheduler_gamma, verbose=True)
+    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
+        optimizer, args.lr_scheduler_gamma, verbose=True
+    )
     use_wandb = setup_wandb(args)
     metrics_logger = MetricsLogger(directory=args.results_dir, tag=tag + "_train")
     rng = torch.Generator(device="cpu")
     rng.manual_seed(args.seed)
     for epoch in range(args.max_num_epochs):
         for batch in train_loader:
-            noise_level = (
-                torch.rand((batch.positions.shape[0],1), generator=rng)
-                * 0.5
-            )
+            noise_level = torch.rand((batch.positions.shape[0], 1), generator=rng) * 0.5
             batch = add_noise_to_positions(batch, noise_level)
             loss = take_step(model, batch, optimizer, args)
-            wandb.log({"loss": loss})
+            if use_wandb:
+                wandb.log({"loss": loss})
         lr_scheduler.step()
         if epoch % args.eval_interval == 0:
             total_loss, per_atom_loss = calculate_validation_loss(
@@ -98,18 +98,23 @@ def main():
 
     # Evaluation on test datasets
     logging.info("Computing metrics for training, validation, and test sets")
-    test_data = aio.read(args.test_file, index=":", format="extxyz")
-    test_loader, _ = get_dataloaders(
-        test_data,
-        args.batch_size,
-        z_table,
-        args.charges_key,
-        args.r_max,
-        -1,
-    )
+    if args.test_file is not None:
+        test_data = aio.read(args.test_file, index=":", format="extxyz")
+        test_loader, _ = get_dataloaders(
+            test_data,
+            args.batch_size,
+            z_table,
+            args.charges_key,
+            args.r_max,
+            -1,
+        )
+        _, test_per_atom_loss = calculate_validation_loss(model, test_loader, args)
+    else:
+        logging.info("No test file provided, skipping test set evaluation")
+        test_per_atom_loss = None
+
     _, train_per_atom_loss = calculate_validation_loss(model, train_loader, args)
     _, val_per_atom_loss = calculate_validation_loss(model, val_loader, args)
-    _, test_per_atom_loss = calculate_validation_loss(model, test_loader, args)
     logging.info(
         f"Training set loss: {train_per_atom_loss}, validation set loss: {val_per_atom_loss}, test set loss: {test_per_atom_loss}"
     )

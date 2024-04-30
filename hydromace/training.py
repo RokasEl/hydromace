@@ -3,7 +3,7 @@ import torch
 
 def add_noise_to_positions(batch, std: float | torch.Tensor = 0.1):
     noise = torch.randn_like(batch.positions)
-    noise = noise/ torch.norm(noise, dim=-1, keepdim=True)*std
+    noise = noise / torch.norm(noise, dim=-1, keepdim=True) * std
     batch.positions += noise
     return batch
 
@@ -19,9 +19,10 @@ def take_step(model, batch, optimizer, args):
 
 
 def loss_function(outputs, batch, args):
-    predicted_missing_hydrogens = outputs["missing_hydrogens"]
-    actual_missing_hydrogens = batch["charges"]
-    loss = (predicted_missing_hydrogens - actual_missing_hydrogens).pow(2).mean()
+    predicted_missing_hydrogens = outputs["missing_hydrogen_logits"]
+    actual_missing_hydrogens = batch["charges"].to(torch.long)
+    criterion = torch.nn.CrossEntropyLoss()
+    loss = criterion(predicted_missing_hydrogens, actual_missing_hydrogens)
     return loss
 
 
