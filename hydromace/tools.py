@@ -3,6 +3,7 @@ from typing import List
 import numpy as np
 import torch
 from ase import Atoms
+from ase.vibrations import Vibrations
 
 
 def assign_num_hydrogens(atoms: Atoms) -> np.ndarray:
@@ -22,6 +23,33 @@ def assign_num_hydrogens(atoms: Atoms) -> np.ndarray:
     for idx, num in zip(atoms_with_hs, num_hs):
         num_hydrogens[idx] = num
     return num_hydrogens
+
+
+def _energies_to_real(energies: np.ndarray) -> np.ndarray:
+    """
+    Ensure all values in the array are real. Use negative values to indicate imaginary components.
+    """
+    energies_real = np.zeros(energies.shape, dtype=float)
+    for i, energy in enumerate(energies):
+        if energy.imag == 0:
+            energies_real[i] = energy.real
+        elif energy.real == 0 and energy.imag != 0:
+            energies_real[i] = -energy.imag
+        else:
+            raise ValueError("Energy has both real and imaginary components")
+    return energies_real
+
+
+def write_vibration_information_to_atoms(atoms: Atoms, vibrations: Vibrations) -> None:
+    """
+    Write the vibration information to the atoms object
+    """
+    vibration_data = vibrations.get_vibrations()
+    energies, modes = vibration_data.get_energies_and_modes()
+    energies = _energies_to_real(energies)
+    atoms.info["vibration_energy"] = energies
+    for i in range(modes.shape[0]):
+        atoms.arrays[f"vibration_mode_{i}"] = modes[i]
 
 
 # From moldiff package.

@@ -1,27 +1,35 @@
+from time import perf_counter
+
 import ase.io as aio
+import torch
 import typer
+from ase.vibrations import Vibrations
 from mace.calculators import mace_off
-from wfl.autoparallelize import AutoparaInfo
-from wfl.configset import ConfigSet, OutputSpec
-from wfl.generate import normal_modes as nm
+
+from hydromace.tools import write_vibration_information_to_atoms
 
 app = typer.Typer()
 
 
 @app.command()
-def main(data_path: str, save_path: str, index: str = ":"):
+def main(
+    data_path: str,
+    save_path: str,
+    index: str = ":",
+    device: str = "cuda" if torch.cuda.is_available() else "cpu",
+):
     data = aio.read(data_path, index=index, format="extxyz")
-    configset = ConfigSet(data)
-    outputspec = OutputSpec(save_path)
-    calc = (mace_off, ["medium"], {"default_dtype": "float64", "device": "cuda"})
-
-    nm.generate_normal_modes_parallel_atoms(
-        inputs=configset,
-        outputs=outputspec,
-        calculator=calc,
-        prop_prefix="mace_",
-        autopara_info=AutoparaInfo(num_inputs_per_python_subprocess=1),
-    )
+    calc = mace_off("medium", device=device, default_dtype="float64")
+    start = perf_counter()
+    print(f"Starting normal mode calculations for indices {index} in {data_path}")
+    for atoms in data:
+        atoms.calc = calc
+        vibrations = Vibrations(atoms)
+        vibrations.run()
+        write_vibration_information_to_atoms(atoms, vibrations)
+        aio.write(save_path, atoms, append=True, format="extxyz")
+    duration = perf_counter() - start
+    print(f"Normal mode calculations completed in {duration:.2f} seconds.")
 
 
 if __name__ == "__main__":

@@ -19,8 +19,3 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["hydromace"]
-
-[project.optional-dependencies]
-nm = [
-    "wfl @ git+https://github.com/libAtoms/workflow"
-]
