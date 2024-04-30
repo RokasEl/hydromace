@@ -22,12 +22,17 @@ def main(
     calc = mace_off("medium", device=device, default_dtype="float64")
     start = perf_counter()
     print(f"Starting normal mode calculations for indices {index} in {data_path}")
-    for atoms in data:
+    for i, atoms in enumerate(data):
         atoms.calc = calc
         vibrations = Vibrations(atoms)
         vibrations.run()
         write_vibration_information_to_atoms(atoms, vibrations)
-        aio.write(save_path, atoms, append=True, format="extxyz")
+        try:
+            aio.write(save_path, atoms, append=True, format="extxyz")
+        except IndexError as e:
+            print(f"Error writing to {save_path}: {e}")
+            print(f"Error occurred at index {i} in {data_path}")
+            print(len(atoms))
     duration = perf_counter() - start
     print(f"Normal mode calculations completed in {duration:.2f} seconds.")
 
