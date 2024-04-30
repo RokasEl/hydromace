@@ -1,4 +1,7 @@
-from typing import List
+import logging
+import os
+import sys
+from typing import List, Optional, Union
 
 import numpy as np
 import torch
@@ -74,3 +77,31 @@ def get_model_dtype(model: torch.nn.Module) -> torch.dtype:
         return torch.float64
     else:
         raise ValueError("Model neither float32 or float64")
+
+
+# Taken from MACE
+def setup_logger(
+    name: str | None = None,
+    level: Union[int, str] = logging.INFO,
+    tag: Optional[str] = None,
+    directory: Optional[str] = None,
+):
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+
+    formatter = logging.Formatter(
+        "%(asctime)s.%(msecs)03d %(levelname)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    ch = logging.StreamHandler(stream=sys.stdout)
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+
+    if (directory is not None) and (tag is not None):
+        os.makedirs(name=directory, exist_ok=True)
+        path = os.path.join(directory, tag + ".log")
+        fh = logging.FileHandler(path)
+        fh.setFormatter(formatter)
+
+        logger.addHandler(fh)
