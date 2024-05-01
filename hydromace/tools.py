@@ -6,7 +6,6 @@ from typing import List, Optional, Union
 import numpy as np
 import torch
 from ase import Atoms
-from ase.vibrations import Vibrations
 
 
 def assign_num_hydrogens(atoms: Atoms) -> np.ndarray:
@@ -44,25 +43,11 @@ def _energies_to_real(energies: np.ndarray) -> np.ndarray:
 
 
 def write_vibration_information_to_atoms(
-    atoms: Atoms, vibrations: Vibrations, non_h_only: bool
+    atoms: Atoms, evals: np.ndarray, evecs: np.ndarray
 ) -> None:
-    """
-    Write the vibration information to the atoms object.
-    If non_h_only is True, only the non-hydrogen atoms will have the vibration information.
-    To be able to write into the `atoms.arrays` we need to pad the mode array with zeros,
-    so it has the same length as the atoms object.
-    """
-    vibration_data = vibrations.get_vibrations()
-    energies, modes = vibration_data.get_energies_and_modes()
-
-    if non_h_only:
-        num_hs = sum(atoms.get_atomic_numbers() == 1)
-        pad = np.zeros((modes.shape[0], num_hs, 3))
-        modes = np.concatenate((modes, pad), axis=1)
-    energies = _energies_to_real(energies)
-    atoms.info["vibration_energy"] = energies
-    for i in range(modes.shape[0]):
-        atoms.arrays[f"vibration_mode_{i}"] = modes[i]
+    atoms.info["vibration_energy"] = evals
+    for i in range(evecs.shape[0]):
+        atoms.arrays[f"vibration_mode_{i}"] = evecs[i]
 
 
 # From moldiff package.

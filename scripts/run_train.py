@@ -3,13 +3,13 @@ from pathlib import Path
 
 import ase.io as aio
 import mace
+import torch
 from mace import modules
 from mace.tools import (
     MetricsLogger,
     build_default_arg_parser,
     get_atomic_number_table_from_zs,
     get_tag,
-    init_device,
     set_default_dtype,
     set_seeds,
     setup_logger,
@@ -21,7 +21,13 @@ from hydromace.training import (
     calculate_validation_loss,
     take_step,
 )
-from hydromace.training_tools import *
+from hydromace.training_tools import (
+    get_dataloaders,
+    get_default_optimizer,
+    get_model_from_args,
+    handle_e3nn_args,
+    setup_wandb,
+)
 
 
 def main():
