@@ -21,6 +21,19 @@ def create_atomic_data_by_copy(
     atomic_data = data.AtomicData.from_config(configs[0], z_table, cutoff)
     data_dict = atomic_data.to_dict()
     dataset = [atomic_data]
+    optional_keys = [
+        "weight",
+        "energy_weight",
+        "forces_weight",
+        "stress_weight",
+        "virials_weight",
+        "forces",
+        "energy",
+        "stress",
+        "virials",
+        "dipole",
+        "charges",
+    ]
     for config in configs[1:]:
         _data = {}
         for key, value in data_dict.items():
@@ -29,6 +42,9 @@ def create_atomic_data_by_copy(
             else:
                 _data[key] = None
         _data["positions"] = torch.Tensor(config.positions)
+        for key in optional_keys:
+            if key not in _data:
+                _data[key] = None
         dataset.append(data.AtomicData(**_data))
     return dataset
 
