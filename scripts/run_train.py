@@ -32,11 +32,15 @@ from hydromace.training_tools import (
 
 def main():
     parser = build_default_arg_parser()
+    parser.add_argument(
+        "--noise_scale", help="Scale of rattling", default=0.4, type=float
+    )
     args = parser.parse_args()
     tag = get_tag(name=args.name, seed=args.seed)
     # Setup
     set_seeds(args.seed)
     setup_logger(level=args.log_level, tag=tag, directory=args.log_dir)
+    logging.info(f"Running with args: {args}")
     try:
         logging.info(f"MACE version: {mace.__version__}")
     except AttributeError:
@@ -44,6 +48,7 @@ def main():
     set_default_dtype(args.default_dtype)
     # Load data
     train_valid_data = aio.read(args.train_file, index=":", format="extxyz")
+    logging.info(f"Train file loaded with {len(train_valid_data)} entries")
     z_table = get_atomic_number_table_from_zs(
         z for atoms in train_valid_data for z in atoms.get_atomic_numbers()
     )
@@ -72,8 +77,9 @@ def main():
         weight_decay=args.weight_decay,
         amsgrad=args.amsgrad,
     )
-    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
-        optimizer, args.lr_scheduler_gamma, verbose=True
+    total_steps = len(train_loader) * args.max_num_epochs
+    lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        optimizer, max_lr=args.lr, total_steps=total_steps
     )
     use_wandb = setup_wandb(args)
     metrics_logger = MetricsLogger(directory=args.results_dir, tag=tag + "_train")
@@ -81,12 +87,15 @@ def main():
     rng.manual_seed(args.seed)
     for epoch in range(args.max_num_epochs):
         for batch in train_loader:
-            noise_level = torch.rand((batch.positions.shape[0], 1), generator=rng) * 0.5
+            noise_level = (
+                torch.rand((batch.positions.shape[0], 1), generator=rng)
+                * args.noise_scale
+            )
             batch = add_noise_to_positions(batch, noise_level)
             loss = take_step(model, batch, optimizer, args)
             if use_wandb:
                 wandb.log({"loss": loss})
-        lr_scheduler.step()
+            lr_scheduler.step()
         if epoch % args.eval_interval == 0:
             total_loss, per_atom_loss = calculate_validation_loss(
                 model, val_loader, args

@@ -28,11 +28,14 @@ class HydroMACE(ScaleShiftMACE):
         hidden_irreps: o3.Irreps = self.readouts[0].linear.irreps_in
         readouts = []
         for i in range(self.num_interactions):
-            irreps_in = (
-                str(hidden_irreps[0])
-                if i == self.num_interactions - 1
-                else hidden_irreps
-            )
+            if i == 0:
+                irreps_in = hidden_irreps
+            else:
+                irreps_in = (
+                    str(hidden_irreps[0])
+                    if i == self.num_interactions - 1
+                    else hidden_irreps
+                )
             readouts.append(
                 NonLinearReadoutBlock(
                     irreps_in=irreps_in,
