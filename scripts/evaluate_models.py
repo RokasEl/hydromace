@@ -8,9 +8,12 @@ import numpy as np
 import pandas as pd
 import torch
 import typer
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from hydromace.interface import HydroMaceCalculator
+from hydromace.tools import get_model_dtype
+from hydromace.training_tools import get_dataloaders
 
 
 @dataclass
@@ -18,42 +21,67 @@ class Results:
     model_path: str
     num_wrong_hydrogens: int
     total_num_hydrogens: int
-    full_asignment_rate: float
 
+
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 app = typer.Typer()
 
 
-def evaluate_model(model_path: str, atoms: List[ase.Atoms]):
+def evaluate_model(model_path: str, dataloader: DataLoader):
     model = torch.load(model_path)
     model.eval()
-    calc = HydroMaceCalculator(model)
     num_wrong_assignments = 0
     total_num_hs = 0
-    all_correct_assignments = 0
-    for mol in atoms:
-        pred = calc.predict_missing_hydrogens(mol)
-        true = mol.arrays["num_hydrogens"]
-        num_wrong_assignments += np.sum(np.abs(pred - true))
-        total_num_hs += np.sum(true)
-        if np.all(pred == true):
-            all_correct_assignments += 1
+    num_preds = 0
+    for batch in dataloader:
+        keys = filter(lambda x: torch.is_floating_point(batch[x]), batch.keys)
+        batch = batch.to(get_model_dtype(model), *keys).to(DEVICE)
+        out = model(batch)
+        pred = out["missing_hydrogens"]
+        true = batch.charges
+        num_wrong_assignments += torch.sum(torch.abs(pred - true)).item()
+        total_num_hs += torch.sum(true).item()
+        num_preds += pred.shape[0]
+
     results = Results(
         model_path,
-        num_wrong_assignments,
-        total_num_hs,
-        all_correct_assignments / len(atoms),
+        int(num_wrong_assignments),
+        int(total_num_hs),
     )
     return results
 
 
+def initialize_dataloader(model_path: str, atoms: List[ase.Atoms], batch_size=32):
+    model = torch.load(model_path, map_location=DEVICE)
+    calc = HydroMaceCalculator(model)
+    z_table = calc.z_table
+    dataloader, _ = get_dataloaders(
+        atoms=atoms,
+        batch_size=batch_size,
+        z_table=z_table,
+        hydrogen_number_key="num_hydrogens",
+        cutoff=calc.cutoff,
+        valid_fraction=0,
+        drop_last=False,
+        shuffle=False,
+    )
+    return dataloader
+
+
 @app.command()
-def main(model_dir: str, data_path: str):
+def main(model_dir: str, data_path: str, batch_size: int = 32):
     print(f"Evaluating models in {model_dir} using data from {data_path}")
-    atoms = aio.read(data_path, index=":", format="extxyz")
+    atoms: List[ase.Atoms] = aio.read(data_path, index=":", format="extxyz")  # type: ignore
     all_results = []
+    first = True
     for model_file in tqdm(pathlib.Path(model_dir).glob("*.model")):
-        results = evaluate_model(model_file.as_posix(), atoms)
+        if first:
+            first = False
+            dataloader = initialize_dataloader(
+                model_file.as_posix(), atoms, batch_size=batch_size
+            )
+        results = evaluate_model(model_file.as_posix(), dataloader)
         all_results.append(results)
     df = pd.DataFrame(all_results)
     print(df)
