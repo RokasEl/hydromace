@@ -70,7 +70,12 @@ def initialize_dataloader(model_path: str, atoms: List[ase.Atoms], batch_size=32
 
 
 @app.command()
-def main(model_dir: str, data_path: str, batch_size: int = 32):
+def main(
+    model_dir: str,
+    data_path: str,
+    save_path: str = "param_sweep_results.csv",
+    batch_size: int = 32,
+):
     print(f"Evaluating models in {model_dir} using data from {data_path}")
     atoms: List[ase.Atoms] = aio.read(data_path, index=":", format="extxyz")  # type: ignore
     all_results = []
@@ -84,7 +89,7 @@ def main(model_dir: str, data_path: str, batch_size: int = 32):
         results = evaluate_model(model_file.as_posix(), dataloader)
         all_results.append(results)
     df = pd.DataFrame(all_results)
-    print(df)
+    df.to_csv(save_path)
 
 
 if __name__ == "__main__":
