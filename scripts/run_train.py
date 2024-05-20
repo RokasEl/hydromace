@@ -16,6 +16,10 @@ from mace.tools import (
 )
 
 import wandb
+from hydromace.tools import (
+    remove_selected_hydrogens_from_batch,
+    sample_hydrogens_to_remove,
+)
 from hydromace.training import (
     add_noise_to_positions,
     calculate_validation_loss,
@@ -87,6 +91,9 @@ def main():
     rng.manual_seed(args.seed)
     for epoch in range(args.max_num_epochs):
         for batch in train_loader:
+            with torch.no_grad():
+                to_remove = sample_hydrogens_to_remove(batch)
+                batch = remove_selected_hydrogens_from_batch(batch, to_remove)
             noise_level = (
                 torch.rand((batch.positions.shape[0], 1), generator=rng)
                 * args.noise_scale

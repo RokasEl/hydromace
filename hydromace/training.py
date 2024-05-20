@@ -1,4 +1,11 @@
 import torch
+import torch.nn.functional as F
+from mace.tools import scatter
+
+from .tools import (
+    remove_selected_hydrogens_from_batch,
+    sample_hydrogens_to_remove,
+)
 
 
 def add_noise_to_positions(batch, std: float | torch.Tensor = 0.1):
@@ -22,7 +29,15 @@ def loss_function(outputs, batch, args):
     actual_missing_hydrogens = batch["charges"].to(torch.long)
     criterion = torch.nn.CrossEntropyLoss()
     loss = criterion(predicted_missing_hydrogens, actual_missing_hydrogens)
-    return loss
+
+    predicted_missing_per_mol = scatter.scatter_sum(
+        outputs["missing_hydrogens"], batch.batch, dim=0
+    ).to(torch.float32)
+    actual_missing_per_mol = scatter.scatter_sum(batch.charges, batch.batch, dim=0).to(
+        torch.float32
+    )
+    loss2 = F.mse_loss(predicted_missing_per_mol, actual_missing_per_mol)
+    return loss + loss2
 
 
 def calculate_validation_loss(model, val_loader, args):
@@ -31,6 +46,8 @@ def calculate_validation_loss(model, val_loader, args):
     num_atoms = 0
     with torch.no_grad():
         for batch in val_loader:
+            to_remove = sample_hydrogens_to_remove(batch, full_removal_frequency=1.0)
+            batch = remove_selected_hydrogens_from_batch(batch, to_remove)
             batch = batch.to(args.device)
             outputs = model(batch)
             loss = loss_function(outputs, batch, args)
