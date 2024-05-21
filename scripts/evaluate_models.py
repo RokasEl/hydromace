@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from hydromace.interface import HydroMaceCalculator
-from hydromace.tools import get_model_dtype
+from hydromace.tools import get_model_dtype, sample_hydrogens_to_remove, remove_selected_hydrogens_from_batch
 from hydromace.training_tools import get_dataloaders
 
 
@@ -34,15 +34,18 @@ def evaluate_model(model_path: str, dataloader: DataLoader):
     num_wrong_assignments = 0
     total_num_hs = 0
     num_preds = 0
-    for batch in dataloader:
-        keys = filter(lambda x: torch.is_floating_point(batch[x]), batch.keys)
-        batch = batch.to(get_model_dtype(model), *keys).to(DEVICE)
-        out = model(batch)
-        pred = out["missing_hydrogens"]
-        true = batch.charges
-        num_wrong_assignments += torch.sum(torch.abs(pred - true)).item()
-        total_num_hs += torch.sum(true).item()
-        num_preds += pred.shape[0]
+    with torch.no_grad():
+        for batch in dataloader:
+            to_remove = sample_hydrogens_to_remove(batch, full_removal_frequency=1.)
+            batch = remove_selected_hydrogens_from_batch(batch, to_remove)
+            keys = filter(lambda x: torch.is_floating_point(batch[x]), batch.keys)
+            batch = batch.to(get_model_dtype(model), *keys).to(DEVICE)
+            out = model(batch)
+            pred = out["missing_hydrogens"]
+            true = batch.charges
+            num_wrong_assignments += torch.sum(torch.abs(pred - true)).item()
+            total_num_hs += torch.sum(true).item()
+            num_preds += pred.shape[0]
 
     results = Results(
         model_path,
@@ -86,7 +89,11 @@ def main(
             dataloader = initialize_dataloader(
                 model_file.as_posix(), atoms, batch_size=batch_size
             )
-        results = evaluate_model(model_file.as_posix(), dataloader)
+        try:
+            results = evaluate_model(model_file.as_posix(), dataloader)
+        except Exception as e:
+            print(f"Error evaluating {model_file}: {e}")
+            continue
         all_results.append(results)
     df = pd.DataFrame(all_results)
     df.to_csv(save_path)
