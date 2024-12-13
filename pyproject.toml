@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hydromace"
-version = "0.1"
+version = "0.2"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
@@ -12,7 +12,8 @@ authors = [
     {name = "Rokas Elijošius", email = "re344@cam.ac.uk"}
 ]
 dependencies = [
-    "mace-torch>=0.3.3"
+    "mace-torch>=0.3.3",
+    "typer>=0.12"
 ]
 
 [tool.setuptools.packages.find]

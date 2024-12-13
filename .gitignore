@@ -160,3 +160,6 @@ mopac*
 # slurm launch files
 launch_*
 slurm*
+
+# vib temp files
+vib/

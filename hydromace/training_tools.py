@@ -31,6 +31,8 @@ def get_dataloaders(
     cutoff: float,
     valid_fraction: float = 0,
     seed: int = 0,
+    drop_last: bool = True,
+    shuffle: bool = True,
 ):
     configs = config_from_atoms_list(
         atoms, config_type_weights={"Default": 1.0}, charges_key=hydrogen_number_key
@@ -47,7 +49,7 @@ def get_dataloaders(
         AtomicData.from_config(x, z_table, cutoff) for x in train_configs
     ]
     train_dataloader = DataLoader(
-        train_atomic_data, batch_size=batch_size, shuffle=True, drop_last=True
+        train_atomic_data, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last
     )
     if valid_configs is not None:
         valid_atomic_data = [
