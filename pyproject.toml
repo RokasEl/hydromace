@@ -15,7 +15,7 @@ dependencies = [
     "mace-torch==0.3.16",
     "typer==0.27.2",
     "e3nn==0.4.4",
-    "torch==2.13.0",
+    "torch>=2.0",
 ]
 
 [tool.setuptools.packages.find]
