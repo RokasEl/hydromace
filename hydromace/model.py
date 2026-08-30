@@ -61,7 +61,7 @@ class HydroMACE(ScaleShiftMACE):
             shifts=data["shifts"],
         )
         edge_attrs = self.spherical_harmonics(vectors)
-        edge_feats = self.radial_embedding(
+        edge_feats, cutoff = self.radial_embedding(
             lengths, data["node_attrs"], data["edge_index"], self.atomic_numbers
         )
 
@@ -76,6 +76,7 @@ class HydroMACE(ScaleShiftMACE):
                 edge_attrs=edge_attrs,
                 edge_feats=edge_feats,
                 edge_index=data["edge_index"],
+                cutoff=cutoff,
             )
             node_feats = product(
                 node_feats=node_feats,
